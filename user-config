@@ -1,26 +1,36 @@
 # user config file
 #
 # rule:
-# [REVISION / DATE]
-# [REVISION / DATE]
-# [URL / DIR]
+# N[ REVISION / DATE ] M[ REVISION / DATE ] PATH[ URL / DIR ]
+# N[ REVISION / DATE ] M[ REVISION / DATE ] PATH[ URL / DIR ]
 # ...
 # 
 # example 1:
-# 92158
-# 93601
-# http://www.abc.com/svn/codes/activity/
-# http://www.abc.com/svn/codes/weixin/
+# 92158 92937 http://www.abc.com/svn/codes/activity/
+# 2017-06-30 2017-07-03 /home/user/svn/codes/weixin/
 # ...
 #
+# NOTE:
+# N, M 必填. 其类型 [ REVISION / DATE ] 可以使用 [ BASE / HEAD ].
+# 如果 PATH 是工作副本路径, N 可以为 BASE, M 可以为工作副本版本; 如果 PATH 是 URL, N 必须指定具体版本号, M 可以为 HEAD.
+# 如果 N, M 类型为 DATE , 脚本会自动指定在其时间以后的版本
+# 
 # example 2:
-# {2017-06-20}
-# {2017-07-01}
- # /home/user/svn/codes/activity/
-# /home/user/svn/codes/weixin/
-# ...
-# http://tech.xiaoniu88.net/svn/codes/activity/trunk/xnol-activity-app
+# 92158 HEAD http://www.abc.com/svn/codes/activity/
+# BASE HEAD /home/user/svn/codes/weixin/
 
-93251
-93512
-/home/lizhe/svn/codes/activity/trunk/xnol-activity-app/
+#93512
+#92937
+
+#2017-07-01
+#2017-06-20
+#http://tech.xiaoniu88.net/svn/codes/activity/trunk/xnol-activity-app/
+#http://tech.xiaoniu88.net/svn/codes/activity/trunk/xnol-activity-interface/
+#/home/lizhe/svn/codes/activity/trunk/xnol-activity-app/
+# /home/lizhe/svn/codes/activity/
+#/home/lizhe/svn/codes/activity/trunk/xnol-activity-app/
+#/home/lizhe/svn/codes/activity/trunk/xnol-activity-interface/
+
+93512 92937 /home/lizhe/svn/codes/activity/trunk/xnol-activity-app/
+BASE    2017-07-03  /home/lizhe/svn/codes/activity/trunk/xnol-activity-interface/
+# 92937    93512  http://tech.xiaoniu88.net/svn/codes/activity/trunk/xnol-activity-app/src/main/resources/

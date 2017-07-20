@@ -5,7 +5,8 @@
 LOG_LIMIT=100000000
 SVN_DIFF="svn diff -x -bw -r "
 SVN_LOGS="svn log -q"
-# CLOC_DIR="./Downloads/cloc-1.72.pl"
+SVN_LIST="svn list -r"
+SVN_CAT="svn cat -r"
 
 get_help() 
 {
@@ -85,9 +86,11 @@ get_type_counts()
             }
         }   
         else if($0~/^-[^-]+/) {
-            del_nr = NR;
             if($0~/^-[ \t\r\n]+$/) {}
-            else valid_del++;
+            else {
+                del_nr = NR;
+                valid_del++;
+            }
         }
     }
     END {
@@ -128,16 +131,24 @@ get_user_counts()
         }
     }
     END {
+        if(NR == 1)
+            printf " %-15s %-12s %-12s %-12s %-12s %-12s %-12s \n", svn_dir, svn_date, "————", "————", "————", "————", "————";
+			
         for(key in tmpdiff) {
+        
             cmd_rm = sprintf("rm %s", tmpdiff[key]);
+            valid_mod = 0;
+            valid_del = 0;
+            valid_add = 0;
+            all_nr = 0;
+            del_nr = 0;
                         
             while(getline line < tmpdiff[key]) {
-                NR++;
+                all_nr++;
                 if(line~/^+[^+]+/) {
-
                     if(line~/^+[ \t\r\n]+$/) {}
                     else {
-                        if(NR  == (del_nr + 1)) {
+                         if(all_nr == (del_nr + 1)) {
                             valid_mod++;
                             valid_del--;    
                         }
@@ -145,9 +156,11 @@ get_user_counts()
                     }
                 }
                 else if(line~/^-[^-]+/) {
-                    del_nr = NR;
                     if(line~/^-[ \t\r\n]+$/) {}
-                    else valid_del++;
+                    else {
+                        valid_del++;
+                        del_nr = all_nr;
+                    }
                 }
             }
                         
@@ -156,7 +169,7 @@ get_user_counts()
             valid_add = 0 + valid_add;
 
             system(cmd_rm);
-            printf " %-32s %-18s %-15s %-12s %-12s %-12s %12s \n", svn_dir, svn_date, key, valid_mod+valid_add+valid_del, valid_mod, valid_del, valid_add;
+			printf " %-15s %-15s %-12s %-12s %-12s %-12s %-12s \n", svn_dir, svn_date, key, valid_mod+valid_add+valid_del, valid_mod, valid_del, valid_add;
         }
     }'
 }
@@ -165,8 +178,7 @@ get_user_counts()
 get_file_counts()
 {
     local SVN_DIR=$1
-
-    $SVN_DIFF $DIFF_REV $SVN_DIR | awk -v svn_dir=${SVN_DIR##*"codes/"} -v svn_date=$DIFF_REV '
+    $SVN_DIFF $DIFF_REV $SVN_DIR | awk -v svn_dir=$SVN_DIR -v svn_date=$DIFF_REV '
     {
         # 获取文件类型
         if($0~/^Index/) {
@@ -189,19 +201,24 @@ get_file_counts()
                     }
             }
             else if($0~/^-[^-]+/) {
-                del_nr = NR;
                 if($0~/^-[ \t\r\n]+$/) {}
-                else fcounts[ftype, "del"]++;
+                else {
+                    fcounts[ftype, "del"]++;
+                    del_nr = NR;
+                }
             }
         }
     }
     END {
+		if(NR == 0)
+            printf " %-15s %-15s %-12s %-12s %-12s %-12s %-12s \n", svn_dir, svn_date, "----", "----", "----", "----", "----";
+
         for(key in fcounts) {
             split(key, subkey, SUBSEP);
             valid_add = 0 + fcounts[subkey[1], "add"];
             valid_mod = 0 + fcounts[subkey[1], "mod"];
             valid_del = 0 + fcounts[subkey[1], "del"];
-            printf " %-32s %-20s %-12s %-12s %-12s %-12s %-12s \n", svn_dir, svn_date, subkey[1], valid_add+valid_mod+valid_del, valid_mod, valid_del, valid_add;
+			printf " %-15s %-15s %-12s %-12s %-12s %-12s %-12s \n", svn_dir, svn_date, subkey[1], valid_add+valid_mod+valid_del, valid_mod, valid_del, valid_add;
         }
     }' | awk '!a[$5]++'
 }
@@ -210,18 +227,13 @@ get_file_counts()
 get_revision() 
 {
     FROM=$1
-    TO=''
-    DIFF_REV=''
-    if [ '$2' == 'HEAD' ]
-    then
-        TO='HEAD';
-        DIFF_REV=$FROM;
-    fi
+    TO=$2
+    DIFF_REV="${FROM}:${TO}";
 }
 
 # 获取项目代码总数
 get_code_number() {
-#   local SVN_DIR=$1
+
 #   eval $($CLOC_DIR $SVN_DIR | grep SUM | awk '{ printf("TOTAL_CODE_NUM=%d", $5)}')
 
     declare -i files=0
@@ -233,26 +245,50 @@ get_code_number() {
         arg=$1
     fi
 
-    list_alldir $arg
+    if [[ "${1}" =~ "http" ]]; then
+        list_alldir_online $arg
+    else
+        list_alldir $arg
+    fi
 
-#   echo "There are $files c files under directory:$arg"
-#   echo "--total code lines are:@$lines@"
     TOTAL_CODE_NUM=$lines
+#   echo "--total code lines are:@$lines@"
 }
 
-# 遍历项目文件, 统计其代码.
-list_alldir()
+# 遍历在线目录文件, 统计其代码数
+list_alldir_online() 
+{
+    list_command=`${SVN_LIST} ${TO} ${1}`
+    cat_command="${SVN_CAT} ${TO} "
+    for file in $list_command
+    do
+        if [ x"$file" != x"." -a x"$file" != x".." ];then
+            if [[ $file =~ "/" ]]; then
+                list_alldir_online "$1$file"
+            else
+                if [[ $file =~ \.java$ || $file =~ \.xml$ || $file =~ \.js$ || $file =~ \.css$ ]]; then
+                    files=$files+1
+                    count_command="${cat_command}${1}/${file} | wc -l"
+                    lines=$lines+$(eval $count_command)
+#                    lines=$lines+`"$SVN_CAT $TO $1/$file" | wc -l`
+                fi
+            fi
+        fi
+    done
+}
+
+# 遍历本地目录文件, 统计其代码数
+list_alldir() 
 {
     for file in `ls -a $1`
     do
-        if [ x"$file" != x"." -a x"$file" != x".." ];then
-            if [ -d "$1/$file" ];then
+        if [ x"$file" != x"." -a x"$file" != x".." ]; then
+            if [ -d "$1/$file" ]; then
                 list_alldir "$1/$file"
             else
-                if [[ $file =~ \.java$ || $file =~ \.xml$ || $file =~ \.js$ || $file =~ \.css$ ]];then
-#                   echo "$1/$file"
+                if [[ $file =~ \.java$ || $file =~ \.xml$ || $file =~ \.js$ || $file =~ \.css$ ]]; then
                     files=$files+1
-                    lines=$lines+`cat "$1/$file"|wc -l`
+                    lines=$lines+`cat "$1/$file" | wc -l`
                 fi
             fi
         fi
@@ -271,7 +307,7 @@ while [ -n "$1" ]; do
                 get_code_number $SVN_DIR
             done
 
-            echo $TOTAL_MOD $TOTAL_DEL $TOTAL_ADD | awk '{ printf " %-25s %-20s %-12s %-12s %-12s %-12s \n", svn_dir, svn_date, svn_code, $1, $2, $3; }' svn_dir=${SVN_DIR##*"codes/"} svn_date="${FROM}:${TO}" svn_code=$((TOTAL_CODE_NUM))
+            echo $TOTAL_MOD $TOTAL_DEL $TOTAL_ADD | awk '{ printf " %-15s %-15s %-12s %-12s %-12s %-12s \n", svn_dir, svn_date, svn_code, $1, $2, $3; }' svn_dir=$SVN_DIR svn_date="${FROM}:${TO}" svn_code=$((TOTAL_CODE_NUM))
 
             break;;
 
@@ -285,11 +321,11 @@ while [ -n "$1" ]; do
                 get_code_number $SVN_DIR
             done
 
-            echo $TOTAL_MOD $TOTAL_DEL $TOTAL_ADD | awk '{ printf " %-25s %-20s %-12s %-12s %-12s %-12s \n", svn_dir, svn_date, svn_code, $1, $2, $3; }' svn_dir=${SVN_DIR##*"codes/"} svn_date="${FROM}:${TO}" svn_code=$((TOTAL_CODE_NUM))
+            echo $TOTAL_MOD $TOTAL_DEL $TOTAL_ADD | awk '{ printf " %-15s %-15s %-12s %-12s %-12s %-12s \n", svn_dir, svn_date, svn_code, $1, $2, $3; }' svn_dir=$SVN_DIR svn_date="${FROM}:${TO}" svn_code=$((TOTAL_CODE_NUM))
 
             break;;
-			
-			        -u) shift
+
+        -u) shift
             get_revision $1 $2;
 
             shift 2;
@@ -298,19 +334,12 @@ while [ -n "$1" ]; do
 #               svn update $SVN_DIR > /dev/null
                 get_user_counts $SVN_DIR
             done
-
+	
             break;;
 
         -f) shift
             get_revision $1 $2;
             shift 2;
-#            echo
-#            echo "------------------------------------------------------------------------------------------------------------------------------"
-#            echo "                                                 SVN 代码统计 - 文件类型分析                                                  " 
-#            echo "------------------------------------------------------------------------------------------------------------------------------"
-#            awk 'BEGIN{printf " %-25s %-20s %-12s %-12s %-12s %-12s %-12s \n", "项目名", "时间范围", "文件类型", "总修改行数", "修改行数", "删除行数", "新增
-行数";}'
-#            echo "------------------------------------------------------------------------------------------------------------------------------"
 
             for x in "$@"; do
                 SVN_DIR=$x
@@ -318,15 +347,11 @@ while [ -n "$1" ]; do
                 get_file_counts $SVN_DIR
             done
 
-#            echo "------------------------------------------------------------------------------------------------------------------------------"
-#            echo 
-
             break;;
 
             -h|*) shift
                 get_help;
                 break;;
+
     esac
 done
-
-
