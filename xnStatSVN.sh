@@ -48,7 +48,7 @@ get_revision()
        TO=$TEMP
     else
         if [ $fdate != "BASE" -a $tdate != "HEAD" ]; then
-            if [ $fdate -ge $tdate ]; then
+            if [[ "$fdate" > "$tdate" ]]; then
                 TEMP=$FROM
                 FROM=$TO
                 TO=$TEMP
