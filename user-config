@@ -1,0 +1,26 @@
+# user config file
+#
+# rule:
+# [REVISION / DATE]
+# [REVISION / DATE]
+# [URL / DIR]
+# ...
+# 
+# example 1:
+# 92158
+# 93601
+# http://www.abc.com/svn/codes/activity/
+# http://www.abc.com/svn/codes/weixin/
+# ...
+#
+# example 2:
+# {2017-06-20}
+# {2017-07-01}
+ # /home/user/svn/codes/activity/
+# /home/user/svn/codes/weixin/
+# ...
+# http://tech.xiaoniu88.net/svn/codes/activity/trunk/xnol-activity-app
+
+93251
+93512
+/home/lizhe/svn/codes/activity/trunk/xnol-activity-app/
