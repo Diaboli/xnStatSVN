@@ -279,8 +279,8 @@ list_alldir_online()
             else
                 if [[ $file =~ \.java$ || $file =~ \.xml$ || $file =~ \.js$ || $file =~ \.css$ ]]; then
                     files=$files+1
-                    count_command="${cat_command}${1}/${file} | wc -l"
-                    lines=$lines+$(eval $count_command)
+                    count_command="${cat_command}${1}/${file}"
+                    lines=$lines+$(eval $count_command | grep -v "^$" | grep -v "^[ \t\r\n]*^M$" | wc -l)
 #                    lines=$lines+`"$SVN_CAT $TO $1/$file" | wc -l`
                 fi
             fi
@@ -291,7 +291,7 @@ list_alldir_online()
 # 遍历本地目录文件, 统计其代码数
 list_alldir() 
 {
-    for file in `ls -a $1`
+    for file in `ls $1`
     do
         if [ x"$file" != x"." -a x"$file" != x".." ]; then
             if [ -d "$1/$file" ]; then
@@ -299,7 +299,7 @@ list_alldir()
             else
                 if [[ $file =~ \.java$ || $file =~ \.xml$ || $file =~ \.js$ || $file =~ \.css$ ]]; then
                     files=$files+1
-                    lines=$lines+`cat "$1/$file" | wc -l`
+                    lines=$lines+`cat "$1/$file" | grep -v "^$" | grep -v "^[ \t\r\n]*^M$" | wc -l`
                 fi
             fi
         fi

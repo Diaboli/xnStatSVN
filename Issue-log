@@ -1,0 +1,9 @@
+# Issue Log
+
+2017-07-21
+1. file svn_stats.sh, function list_alldir()
+	* lines=$lines+`cat "$1/$file" | grep -v "^$" | grep -v "^[ \t\r\n]^M$" | wc -l`
+	此语句筛选空行时, 对于有 ^M (Ctrl + V, Ctrl + M) 符号的空行, 筛选不彻底.
+	
+	* `cat "$1/$file" | grep -v "^$" | grep -v "^[ \t\r\n]^M$" | wc -l`
+	此命令执行时, 会比 `cat "$1/$file" | wc -l` 多统计一些行, 原因在于 `cat "$1/$file" | wc -l` 会把前一文件的结尾行与后一文件的开始行合并成一行.
