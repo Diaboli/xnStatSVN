@@ -275,7 +275,7 @@ list_alldir_online()
     do
         if [ x"$file" != x"." -a x"$file" != x".." ];then
             if [[ $file =~ "/" ]]; then
-                list_alldir_online "$1$file"
+                list_alldir_online "$1/$file"
             else
                 if [[ $file =~ \.java$ || $file =~ \.xml$ || $file =~ \.js$ || $file =~ \.css$ ]]; then
                     files=$files+1

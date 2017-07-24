@@ -1,6 +1,19 @@
 # Issue Log
 
-2017-07-21
+* SVN：E155007 - Path is not a working copy
+** date: 2017-07-24
+** 描述
+   Windows系統下模拟Linux环境，把 D 盘路径映射成 //data/ 路径, svn 提示: Path is not a working copy.
+** 解决
+   把脚本拷贝至代码所在的目录，脚本配置文件中的路径写成相对路径，比如 ./codes/app/
+
+* SVN：E155007 - Path is not a working copy
+** date： 2017-07-24
+** 原因
+   一般是项目代码并非 svn checkout 下来的，导致目录下没有 .svn 文件夹，没有代码的各版本信息
+
+* 统计行数不精确
+** date: 2017-07-21
 1. file svn_stats.sh, function list_alldir()
 	* lines=$lines+`cat "$1/$file" | grep -v "^$" | grep -v "^[ \t\r\n]^M$" | wc -l`
 	此语句筛选空行时, 对于有 ^M (Ctrl + V, Ctrl + M) 符号的空行, 筛选不彻底.
