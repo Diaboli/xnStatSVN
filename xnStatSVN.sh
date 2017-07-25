@@ -8,7 +8,7 @@ get_help()
     echo 
     echo "------------ svn_stats.sh ---------------"
     echo "Usage: sh xnStatSVN [option] user-config"
-	echo 
+    echo 
     echo "Option:"
     echo "  -a      获取项目代码数, 版本间有效代码修改统计, 其中修改代码数为有效添加代码和有效删减代码之和."
     echo "  -t      获取项目代码数, 版本间有效代码修改统计, 其中修改代码为删减代码后立即增加的代码，此数目不计入有效添加代码和有效删减代码."
@@ -56,6 +56,19 @@ get_revision()
         fi
     fi
 }
+       
+Nproc=15
+
+trap "exec 1000>&-;exec 1000<&-;exit 0" 2
+tmpfile="/tmp/$$.fifo"
+mkfifo $tmpfile
+exec 1000<>$tmpfile
+rm $tmpfile
+
+for(( i=0; i<$Nproc; i++ ))
+do 
+    echo 
+done >&1000
 
 OUT=$(mktemp)
 while [ -n "$1" ]; do
@@ -69,37 +82,48 @@ while [ -n "$1" ]; do
             awk 'BEGIN{ printf " %-15s %-21s %-9s %-8s %-8s %-12s \n", "项目名", "时间范围", "总行数", "修改行数", "删除行数", "新增行数"; }'
             echo "-------------------------------------------------------------------------------------------------"
 
-            cat $1 | grep -v "^[ ]*#" | grep -v "^[ ]*$" | while read -r line;
+            cat $1 | grep -v "^[ ]*#" | grep -v "^[ ]*$" | ( while read -r line;
             do
-                line_arr=($line)
-                get_revision ${line_arr[0]} ${line_arr[1]}
-                dir=${line_arr[2]}
-                sh svn_stats.sh -a $FROM $TO $dir | tee -a $OUT
+                read -u1000
+                {
+                    line_arr=($line)
+                    get_revision ${line_arr[0]} ${line_arr[1]}
+                    dir=${line_arr[2]}
+                    sh svn_stats.sh -a $FROM $TO $dir | tee -a $OUT
+                    echo >&1000
+                } &
             done
-			
+            wait
+            )
+            
             echo "-------------------------------------------------------------------------------------------------"
             cat $OUT | awk '{ sum_code += $3; sum_mod += $4; sum_del += $5; sum_add += $6; } END{ printf " %-16s %-24s %-12s %-12s %-12s %-12s \n", "总合计", "————", sum_code, sum_mod, sum_del, sum_add; }'
-
             echo
 
             break;;
-			
+            
         -t) shift
 
-			echo " * 表示URL路径"
+            echo " * 表示URL路径"
             echo "-------------------------------------------------------------------------------------------------"
             echo "                                        SVN 代码统计                                             "
             echo "-------------------------------------------------------------------------------------------------"
             awk 'BEGIN{ printf " %-15s %-21s %-9s %-8s %-8s %-12s \n", "项目名", "时间范围", "总行数", "修改行数", "删除行数", "新增行数"; }'
             echo "-------------------------------------------------------------------------------------------------"
 
-            cat $1 | grep -v "^[ ]*#" | grep -v "^[ ]*$" | while read -r line;
+            cat $1 | grep -v "^[ ]*#" | grep -v "^[ ]*$" | ( while read -r line;
             do
-                line_arr=($line)
-                get_revision ${line_arr[0]} ${line_arr[1]}
-                dir=${line_arr[2]}
-                sh svn_stats.sh -t $FROM $TO $dir | tee -a $OUT
+                read -u1000
+                {
+                    line_arr=($line)
+                    get_revision ${line_arr[0]} ${line_arr[1]}
+                    dir=${line_arr[2]}
+                    sh svn_stats.sh -t $FROM $TO $dir | tee -a $OUT
+                    echo >&1000
+                } &
             done
+            wait
+            )
 
             echo "-------------------------------------------------------------------------------------------------"
             cat $OUT | awk '{ sum_code += $3; sum_mod += $4; sum_del += $5; sum_add += $6; } END{ printf " %-16s %-24s %-12s %-12s %-12s %-12s \n", "总合计", "————", sum_code, sum_mod, sum_del, sum_add; }'
@@ -115,14 +139,20 @@ while [ -n "$1" ]; do
             echo "-----------------------------------------------------------------------------------------------------------------"
             awk 'BEGIN{ printf " %-15s %-21s %-11s %-7s %-8s %-8s %-8s \n", "项目名", "时间范围", "开发人员", "总修改行数", "修改行数", "删除行数", "新增行数"; }'
             echo "-----------------------------------------------------------------------------------------------------------------"
-			
-            cat $1 | grep -v "^[ ]*#" | grep -v "^[ ]*$" | while read -r line;	
+            
+            cat $1 | grep -v "^[ ]*#" | grep -v "^[ ]*$" | ( while read -r line;  
             do
-                line_arr=($line)
-                get_revision ${line_arr[0]} ${line_arr[1]}
-                dir=${line_arr[2]}
-                sh svn_stats.sh -u $FROM $TO $dir | tee -a $OUT
+                read -u1000
+                {
+                    line_arr=($line)
+                    get_revision ${line_arr[0]} ${line_arr[1]}
+                    dir=${line_arr[2]}
+                    sh svn_stats.sh -u $FROM $TO $dir | tee -a $OUT
+                    echo >&1000
+                } &
             done
+            wait 
+            )
 
             echo "-----------------------------------------------------------------------------------------------------------------"
             cat $OUT | awk '{ sum_total_mod += $4; sum_mod += $5; sum_del += $6; sum_add += $7; } END{ printf " %-15s %-25s %-15s %-12s %-12s %-12s %-12s \n", "总合计", "————", "————", sum_total_mod, sum_mod, sum_del, sum_add; }'
@@ -132,20 +162,26 @@ while [ -n "$1" ]; do
 
         -f) shift
 
-			echo " * 表示URL路径"
+            echo " * 表示URL路径"
             echo "-----------------------------------------------------------------------------------------------------------------"
             echo "                                          SVN 代码统计 - 文件类型分析                                            " 
             echo "-----------------------------------------------------------------------------------------------------------------"
             awk 'BEGIN{printf " %-15s %-21s %-11s %-7s %-8s %-8s %-8s \n", "项目名", "时间范围", "文件类型", "总修改行数", "修改行数", "删除行数", "新增行数";}'
             echo "-----------------------------------------------------------------------------------------------------------------"
 
-            cat $1 | grep -v "^[ ]*#" | grep -v "^[ ]*$" | while read -r line;
+            cat $1 | grep -v "^[ ]*#" | grep -v "^[ ]*$" | ( while read -r line;
             do
-                line_arr=($line)
-                get_revision ${line_arr[0]} ${line_arr[1]}
-                dir=${line_arr[2]}
-                sh svn_stats.sh -f $FROM $TO $dir | tee -a $OUT
+                read -u1000
+                {
+                    line_arr=($line)
+                    get_revision ${line_arr[0]} ${line_arr[1]}
+                    dir=${line_arr[2]}
+                    sh svn_stats.sh -f $FROM $TO $dir | tee -a $OUT
+                    echo >&1000
+                } &
             done
+            wait
+            )
 
             echo "-----------------------------------------------------------------------------------------------------------------"
             cat $OUT | awk '{ sum_total_mod += $4; sum_mod += $5; sum_del += $6; sum_add += $7; } END{ printf " %-15s %-25s %-15s %-12s %-12s %-12s %-12s \n", "总合计", "————", "————", sum_total_mod, sum_mod, sum_del, sum_add; }'
@@ -160,5 +196,5 @@ while [ -n "$1" ]; do
     esac
 done
 
+exec 1000>&-
 rm -f $OUT
-
