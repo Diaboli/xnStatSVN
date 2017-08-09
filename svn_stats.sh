@@ -9,6 +9,8 @@ SVN_LIST="svn list -r"
 SVN_CAT="svn cat -r"
 SVN_INFO="svn info"
 
+Nproc=25
+PID=()
 get_help() 
 {
     echo 
@@ -272,7 +274,12 @@ get_code_number() {
     if [[ "${1}" =~ "http" ]]; then
         list_alldir_online $arg
     else
-        list_alldir $arg
+        code_num_temp=$(mktemp)
+#        list_alldir $arg
+        list_alldir_test $arg
+        eval $(cat $code_num_temp | awk '{ code_num += $1; } END { printf("TO_LINES=%d", code_num) }')
+        lines=$((TO_LINES))
+        rm -f $code_num_temp
     fi
 
     TOTAL_CODE_NUM=$lines
@@ -298,6 +305,34 @@ list_alldir_online()
             fi
         fi
     done
+}
+
+list_alldir_test() {
+    local Ijob=0
+    local cat_command="${SVN_CAT} ${TO}"
+    for file in `svn list -R -r $TO $1`
+    do
+        while true
+        do
+            if [[ $Ijob -gt $Nproc ]]; then
+                Ijob=0
+            fi
+            if [[ ! "${PID[Ijob]}" ]] || ! kill -0 ${PID[Ijob]} 2> /dev/null; then
+            {
+                if [[ $file =~ \.java$ || $file =~ \.xml$ || $file =~ \.js$ || $file =~ \.css$ ]]; then
+                    files=$files+1
+                    count_comman="${cat_command}${1}/${file}"
+                    eval $($count_command | grep -v "^$" | grep -v "[ \t\r\n]*$" | wc -l >> $code_num_temp)
+                    echo "hello"
+                fi
+            } &
+                PID[Ijob]=$!
+                Ijob=$((Ijob+1))
+                break;
+            fi
+        done
+    done
+    wait
 }
 
 # 遍历本地目录文件, 统计其代码数
