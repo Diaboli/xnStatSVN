@@ -60,6 +60,7 @@ get_revision()
        
 Nproc=2
 Ijob=0
+IjobNum=0
 PID=() # 记录PID到数组, 检查PID是否存在以确定是否运行完毕
 
 #trap "exec 1000>&-;exec 1000<&-;exit 0" 2
@@ -97,10 +98,12 @@ while [ -n "$1" ]; do
                         line_arr=($line)
                         get_revision ${line_arr[0]} ${line_arr[1]}
                         dir=${line_arr[2]}
-                        sh svn_stats.sh -a $FROM $TO $dir | tee -a $OUT
+#                        sh svn_stats.sh -a $FROM $TO $dir $IjobNum | tee -a $OUT
+                        sh svn_stats.sh -a $FROM $TO $dir $IjobNum >> $OUT
                     } &
                         PID[Ijob]=$!
                         Ijob=$((Ijob+1))
+                        IjobNum=$((IjobNum+1))
                         break;
                     fi
                 done
@@ -108,6 +111,7 @@ while [ -n "$1" ]; do
             wait
             )
             
+            cat $OUT | sort -n -k8 | awk ' { printf " %-18s %-25s %-12s %-12s %-12s %-12s %-12s\n", $1, $2, $3, $4, $5, $6, $7; } '
             echo "--------------------------------------------------------------------------------------------------------"
             cat $OUT | awk '{ sum_code += $3; sum_mod += $4; sum_del += $5; sum_add += $6; } END{ printf " %-16s %-24s %-12s %-12s %-12s %-12s %-12s\n", "总合计", "————", sum_code, sum_mod, sum_del, sum_add, "————"; }'
             echo
@@ -149,10 +153,12 @@ while [ -n "$1" ]; do
                         line_arr=($line)
                         get_revision ${line_arr[0]} ${line_arr[1]}
                         dir=${line_arr[2]}
-                        sh svn_stats.sh -t $FROM $TO $dir | tee -a $OUT
+#                        sh svn_stats.sh -t $FROM $TO $dir $IjobNum | tee -a $OUT
+                        sh svn_stats.sh -t $FROM $TO $dir $IjobNum >> $OUT
                     } &
                         PID[Ijob]=$!
                         Ijob=$((Ijob+1))
+                        IjobNum=$((IjobNum+1))
                         break;
                     fi
                 done
@@ -160,6 +166,7 @@ while [ -n "$1" ]; do
             wait
             )
 
+            cat $OUT | sort -n -k8 | awk ' { printf " %-18s %-25s %-12s %-12s %-12s %-12s %-12s\n", $1, $2, $3, $4, $5, $6, $7; } '
             echo "--------------------------------------------------------------------------------------------------------"
             cat $OUT | awk '{ sum_code += $3; sum_mod += $4; sum_del += $5; sum_add += $6; } END{ printf " %-16s %-24s %-12s %-12s %-12s %-12s %-12s\n", "总合计", "————", sum_code, sum_mod, sum_del, sum_add, "————"; }'
             echo

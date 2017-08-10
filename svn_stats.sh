@@ -274,12 +274,12 @@ get_code_number() {
     if [[ "${1}" =~ "http" ]]; then
         list_alldir_online $arg
     else
-        code_num_temp=$(mktemp)
-#        list_alldir $arg
-        list_alldir_test $arg
-        eval $(cat $code_num_temp | awk '{ code_num += $1; } END { printf("TO_LINES=%d", code_num) }')
-        lines=$((TO_LINES))
-        rm -f $code_num_temp
+#        code_num_temp=$(mktemp)
+        list_alldir $arg
+#        list_alldir_test $arg
+#        eval $(cat $code_num_temp | awk '{ code_num += $1; } END { printf("TO_LINES=%d", code_num) }')
+#        lines=$((TO_LINES))
+#        rm -f $code_num_temp
     fi
 
     TOTAL_CODE_NUM=$lines
@@ -359,29 +359,51 @@ while [ -n "$1" ]; do
             get_revision $1 $2;
 
             shift 2;
-            for x in "$@"; do
-                SVN_DIR=$x
-                get_project_info $SVN_DIR
-                get_all_counts $SVN_DIR
-                get_code_number $SVN_DIR
-            done
+#            for x in "$@"; do
+#                SVN_DIR=$x
+#                get_project_info $SVN_DIR
+#                get_all_counts $SVN_DIR
+#                get_code_number $SVN_DIR
+#            done
 
-            echo $TOTAL_MOD $TOTAL_DEL $TOTAL_ADD | awk '{ printf " %-18s %-25s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, svn_code, $1, $2, $3, branch_version; }' project=$PROJECT svn_date="${FROM}:${TO}" svn_code=$((TOTAL_CODE_NUM)) branch_version=$BRANCH_VERSION
+            SVN_DIR=$1;
+            get_project_info $SVN_DIR
+            get_all_counts $SVN_DIR
+            get_code_number $SVN_DIR
+
+            shift;
+            if [ ! $1 ]; then
+                echo $TOTAL_MOD $TOTAL_DEL $TOTAL_ADD | awk '{ printf " %-18s %-25s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, svn_code, $1, $2, $3, branch_version; }' project=$PROJECT svn_date="${FROM}:${TO}" svn_code=$((TOTAL_CODE_NUM)) branch_version=$BRANCH_VERSION
+            else
+                JOB_NUMBER=$1; 
+                echo $TOTAL_MOD $TOTAL_DEL $TOTAL_ADD | awk '{ printf " %-18s %-25s %-12s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, svn_code, $1, $2, $3, branch_version, job_number; }' project=$PROJECT svn_date="${FROM}:${TO}" svn_code=$((TOTAL_CODE_NUM)) branch_version=$BRANCH_VERSION job_number=$JOB_NUMBER
+            fi
 
             break;;
 
-        -t) shift
+        -t) shift;
             get_revision $1 $2;
 
             shift 2;
-            for x in "$@"; do
-                SVN_DIR=$x
-                get_project_info $SVN_DIR
-                get_type_counts $SVN_DIR
-                get_code_number $SVN_DIR
-            done
-
-            echo $TOTAL_MOD $TOTAL_DEL $TOTAL_ADD | awk '{ printf " %-18s %-25s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, svn_code, $1, $2, $3, branch_version; }' project=$PROJECT svn_date="${FROM}:${TO}" svn_code=$((TOTAL_CODE_NUM)) branch_version=$BRANCH_VERSION
+#            for x in "$@"; do
+#                SVN_DIR=$x
+#                get_project_info $SVN_DIR
+#                get_type_counts $SVN_DIR
+#                get_code_number $SVN_DIR
+#            done
+            
+            SVN_DIR=$1
+            get_project_info $SVN_DIR
+            get_type_counts $SVN_DIR
+            get_code_number $SVN_DIR
+            
+            shift;
+            if [ ! $1 ]; then
+                echo $TOTAL_MOD $TOTAL_DEL $TOTAL_ADD | awk '{ printf " %-18s %-25s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, svn_code, $1, $2, $3, branch_version; }' project=$PROJECT svn_date="${FROM}:${TO}" svn_code=$((TOTAL_CODE_NUM)) branch_version=$BRANCH_VERSION
+            else
+                JOB_NUMBER=$1
+                echo $TOTAL_MOD $TOTAL_DEL $TOTAL_ADD | awk '{ printf " %-18s %-25s %-12s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, svn_code, $1, $2, $3, branch_version, job_number; }' project=$PROJECT svn_date="${FROM}:${TO}" svn_code=$((TOTAL_CODE_NUM)) branch_version=$BRANCH_VERSION job_number=$JOB_NUMBER
+            fi
 
             break;;
 
