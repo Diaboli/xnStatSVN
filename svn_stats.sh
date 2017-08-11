@@ -9,8 +9,6 @@ SVN_LIST="svn list -r"
 SVN_CAT="svn cat -r"
 SVN_INFO="svn info"
 
-Nproc=25
-PID=()
 get_help() 
 {
     echo 
@@ -259,9 +257,6 @@ get_project_info() {
 
 # 获取项目代码总数
 get_code_number() {
-
-#   eval $($CLOC_DIR $SVN_DIR | grep SUM | awk '{ printf("TOTAL_CODE_NUM=%d", $5)}')
-
     declare -i files=0
     declare -i lines=0
 
@@ -274,22 +269,16 @@ get_code_number() {
     if [[ "${1}" =~ "http" ]]; then
         list_alldir_online $arg
     else
-#        code_num_temp=$(mktemp)
         list_alldir $arg
-#        list_alldir_test $arg
-#        eval $(cat $code_num_temp | awk '{ code_num += $1; } END { printf("TO_LINES=%d", code_num) }')
-#        lines=$((TO_LINES))
-#        rm -f $code_num_temp
     fi
 
     TOTAL_CODE_NUM=$lines
-#   echo "--total code lines are:@$lines@"
 }
 
 # 遍历在线目录文件, 统计其代码数
 list_alldir_online() 
 {
-    list_command=`${SVN_LIST} ${TO} ${1}`
+    local list_command=`${SVN_LIST} ${TO} ${1}`
     cat_command="${SVN_CAT} ${TO} "
     for file in $list_command
     do
@@ -305,34 +294,6 @@ list_alldir_online()
             fi
         fi
     done
-}
-
-list_alldir_test() {
-    local Ijob=0
-    local cat_command="${SVN_CAT} ${TO}"
-    for file in `svn list -R -r $TO $1`
-    do
-        while true
-        do
-            if [[ $Ijob -gt $Nproc ]]; then
-                Ijob=0
-            fi
-            if [[ ! "${PID[Ijob]}" ]] || ! kill -0 ${PID[Ijob]} 2> /dev/null; then
-            {
-                if [[ $file =~ \.java$ || $file =~ \.xml$ || $file =~ \.js$ || $file =~ \.css$ ]]; then
-                    files=$files+1
-                    count_comman="${cat_command}${1}/${file}"
-                    eval $($count_command | grep -v "^$" | grep -v "[ \t\r\n]*$" | wc -l >> $code_num_temp)
-                    echo "hello"
-                fi
-            } &
-                PID[Ijob]=$!
-                Ijob=$((Ijob+1))
-                break;
-            fi
-        done
-    done
-    wait
 }
 
 # 遍历本地目录文件, 统计其代码数
@@ -355,17 +316,10 @@ list_alldir()
 
 while [ -n "$1" ]; do
     case $1 in
-        -a) shift
+        -a) shift;
             get_revision $1 $2;
 
             shift 2;
-#            for x in "$@"; do
-#                SVN_DIR=$x
-#                get_project_info $SVN_DIR
-#                get_all_counts $SVN_DIR
-#                get_code_number $SVN_DIR
-#            done
-
             SVN_DIR=$1;
             get_project_info $SVN_DIR
             get_all_counts $SVN_DIR
@@ -385,13 +339,6 @@ while [ -n "$1" ]; do
             get_revision $1 $2;
 
             shift 2;
-#            for x in "$@"; do
-#                SVN_DIR=$x
-#                get_project_info $SVN_DIR
-#                get_type_counts $SVN_DIR
-#                get_code_number $SVN_DIR
-#            done
-            
             SVN_DIR=$1
             get_project_info $SVN_DIR
             get_type_counts $SVN_DIR
@@ -407,7 +354,7 @@ while [ -n "$1" ]; do
 
             break;;
 
-        -u) shift
+        -u) shift;
             get_revision $1 $2;
 
             shift 2;
@@ -439,4 +386,3 @@ while [ -n "$1" ]; do
 
     esac
 done
-

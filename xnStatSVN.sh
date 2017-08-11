@@ -58,21 +58,10 @@ get_revision()
     fi
 }
        
-Nproc=2
-Ijob=0
-IjobNum=0
+Nproc=25
+Ijob=1
+IjobNum=1
 PID=() # 记录PID到数组, 检查PID是否存在以确定是否运行完毕
-
-#trap "exec 1000>&-;exec 1000<&-;exit 0" 2
-#tmpfile="/tmp/$$.fifo"
-#mkfifo $tmpfile
-#exec 1000<>$tmpfile
-#rm $tmpfile
-
-#for(( i=0; i<$Nproc; i++ ))
-#do 
-#    echo 
-#done >&1000
 
 OUT=$(mktemp)
 while [ -n "$1" ]; do
@@ -98,7 +87,6 @@ while [ -n "$1" ]; do
                         line_arr=($line)
                         get_revision ${line_arr[0]} ${line_arr[1]}
                         dir=${line_arr[2]}
-#                        sh svn_stats.sh -a $FROM $TO $dir $IjobNum | tee -a $OUT
                         sh svn_stats.sh -a $FROM $TO $dir $IjobNum >> $OUT
                     } &
                         PID[Ijob]=$!
@@ -127,20 +115,6 @@ while [ -n "$1" ]; do
             awk 'BEGIN{ printf " %-15s %-21s %-9s %-8s %-8s %-8s %-8s\n", "项目名", "时间范围", "总行数", "修改行数", "删除行数", "新增行数", "分支信息"; }'
             echo "--------------------------------------------------------------------------------------------------------"
 
-#            cat $1 | grep -v "^[ ]*#" | grep -v "^[ ]*$" | ( while read -r line;
-#            do
-#                read -u1000
-#                {
-#                    line_arr=($line)
-#                    get_revision ${line_arr[0]} ${line_arr[1]}
-#                    dir=${line_arr[2]}
-#                    sh svn_stats.sh -t $FROM $TO $dir | tee -a $OUT
-#                    echo >&1000
-#                } &
-#            done
-#            wait
-#            )
-            
             cat $1 | grep -v "^[ ]*#" | grep -v "^[ ]*$" | ( while read -r line;
             do
                 while true
@@ -153,7 +127,6 @@ while [ -n "$1" ]; do
                         line_arr=($line)
                         get_revision ${line_arr[0]} ${line_arr[1]}
                         dir=${line_arr[2]}
-#                        sh svn_stats.sh -t $FROM $TO $dir $IjobNum | tee -a $OUT
                         sh svn_stats.sh -t $FROM $TO $dir $IjobNum >> $OUT
                     } &
                         PID[Ijob]=$!
