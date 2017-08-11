@@ -9,6 +9,18 @@ SVN_LIST="svn list -r"
 SVN_CAT="svn cat -r"
 SVN_INFO="svn info"
 
+Nproc=25    # 可同时运行的最大作业数
+trap "exec 1001>&-;exec 1001<&-;exit 0" 2
+tempfifo="/tmp/$$.fifo"        # $$表示当前执行文件的PID
+mkfifo $tempfifo
+exec 1001<>$tempfifo
+rm -rf $tempfifo
+
+for(( i=0; i<$Nproc; i++ ))
+do
+    echo 
+done >&1001
+
 get_help() 
 {
     echo 
@@ -265,14 +277,32 @@ get_code_number() {
     else
         arg=$1
     fi
-
-    if [[ "${1}" =~ "http" ]]; then
-        list_alldir_online $arg
-    else
-        list_alldir $arg
-    fi
-
+    
+    code_num_temp=$(mktemp)
+    list_alldir $arg
+    eval $(cat $code_num_temp | awk '{ code_num += $1; } END{ printf("TO_LINES=%d", code_num)}')
+    lines=$((TO_LINES))
     TOTAL_CODE_NUM=$lines
+    rm -f $code_num_temp
+}
+
+# 遍历在线目录文件, 统计其代码数
+list_alldir() 
+{
+    local cat_command="${SVN_CAT} ${TO} "
+    for file in `svn list -R -r $TO $1`
+    do
+        read -u1001
+        {
+            if [[ $file =~ \.java$ || $file =~ \.xml$ || $file =~ \.js$ || $file =~ \.css$ ]]; then
+                files=$files+1
+                count_command="${cat_command}${1}/${file}"
+                eval $($count_command | grep -v "^$" | grep -v "^[ \t\r\n]*$" | wc -l >> $code_num_temp)
+            fi
+            echo >&1001
+        } &
+    done
+    wait
 }
 
 # 遍历在线目录文件, 统计其代码数
@@ -297,7 +327,7 @@ list_alldir_online()
 }
 
 # 遍历本地目录文件, 统计其代码数
-list_alldir() 
+list_alldir_local() 
 {
     for file in `ls $1`
     do

@@ -57,11 +57,19 @@ get_revision()
         fi
     fi
 }
-       
-Nproc=25
-Ijob=1
+
+Nproc=2
 IjobNum=1
-PID=() # 记录PID到数组, 检查PID是否存在以确定是否运行完毕
+trap "exec 1000>&-;exec 1000<&-;exit 0" 2
+tmpfile="/tmp/$$.fifo"
+mkfifo $tmpfile
+exec 1000<>$tmpfile
+rm $tmpfile
+
+for(( i=0; i<$Nproc; i++ ))
+do
+    echo 
+done >&1000
 
 OUT=$(mktemp)
 while [ -n "$1" ]; do
@@ -77,24 +85,15 @@ while [ -n "$1" ]; do
 
             cat $1 | grep -v "^[ ]*#" | grep -v "^[ ]*$" | ( while read -r line;
             do
-                while true
-                do
-                    if [[ $Ijob -gt $Nproc ]]; then
-                        Ijob=0
-                    fi
-                    if [[ ! "${PID[Ijob]}" ]] || ! kill -0 ${PID[Ijob]} 2> /dev/null; then
-                    {
-                        line_arr=($line)
-                        get_revision ${line_arr[0]} ${line_arr[1]}
-                        dir=${line_arr[2]}
-                        sh svn_stats.sh -a $FROM $TO $dir $IjobNum >> $OUT
-                    } &
-                        PID[Ijob]=$!
-                        Ijob=$((Ijob+1))
-                        IjobNum=$((IjobNum+1))
-                        break;
-                    fi
-                done
+                read -u1000
+                {
+                    line_arr=($line)
+                    get_revision ${line_arr[0]} ${line_arr[1]}
+                    dir=${line_arr[2]}
+                    sh svn_stats.sh -a $FROM $TO $dir $IjobNum >> $OUT
+                    echo >&1000
+                } &
+                IjobNum=$((IjobNum+1))
             done
             wait
             )
@@ -117,24 +116,15 @@ while [ -n "$1" ]; do
 
             cat $1 | grep -v "^[ ]*#" | grep -v "^[ ]*$" | ( while read -r line;
             do
-                while true
-                do
-                    if [[ $Ijob -gt $Nproc ]]; then
-                        Ijob=0
-                    fi
-                    if [[ ! "${PID[Ijob]}" ]] || ! kill -0 ${PID[Ijob]} 2> /dev/null; then
-                    {
-                        line_arr=($line)
-                        get_revision ${line_arr[0]} ${line_arr[1]}
-                        dir=${line_arr[2]}
-                        sh svn_stats.sh -t $FROM $TO $dir $IjobNum >> $OUT
-                    } &
-                        PID[Ijob]=$!
-                        Ijob=$((Ijob+1))
-                        IjobNum=$((IjobNum+1))
-                        break;
-                    fi
-                done
+                read -u1000
+                {
+                    line_arr=($line)
+                    get_revision ${line_arr[0]} ${line_arr[1]}
+                    dir=${line_arr[2]}
+                    sh svn_stats.sh -t $FROM $TO $dir $IjobNum >> $OUT
+                    echo >&1000
+                } &
+                IjobNum=$((IjobNum+1))
             done
             wait
             )
@@ -154,28 +144,19 @@ while [ -n "$1" ]; do
             echo "------------------------------------------------------------------------------------------------------------------------"
             awk 'BEGIN{ printf " %-15s %-21s %-11s %-7s %-8s %-8s %-8s %-8s\n", "项目名", "时间范围", "开发人员", "总修改行数", "修改行数", "删除行数", "新增行数", "分支信息"; }'
             echo "------------------------------------------------------------------------------------------------------------------------"
-            
-            cat $1 | grep -v "^[ ]*#" | grep -v "^[ ]*$" | ( while read -r line;  
+
+            cat $1 | grep -v "^[ ]*#" | grep -v "^[ ]*$" | ( while read -r line;
             do
-                while true
-                do
-                    if [[ $Ijob -gt $Nproc ]]; then
-                        Ijob=0
-                    fi
-                    if [[ ! "${PID[Ijob]}" ]] || ! kill -0 ${PID[Ijob]} 2> /dev/null; then
-                    {
-                        line_arr=($line)
-                        get_revision ${line_arr[0]} ${line_arr[1]}
-                        dir=${line_arr[2]}
-                        sh svn_stats.sh -u $FROM $TO $dir | tee -a $OUT
-                    } &
-                        PID[Ijob]=$!
-                        Ijob=$((Ijob+1))
-                        break;
-                    fi
-                done
+                read -u1000
+                {
+                    line_arr=($line)
+                    get_revision ${line_arr[0]} ${line_arr[1]}
+                    dir=${line_arr[2]}
+                    sh svn_stats.sh -u $FROM $TO $dir | tee -a $OUT
+                    echo >&1000
+                } &
             done
-            wait 
+            wait
             )
 
             echo "------------------------------------------------------------------------------------------------------------------------"
@@ -195,23 +176,14 @@ while [ -n "$1" ]; do
 
             cat $1 | grep -v "^[ ]*#" | grep -v "^[ ]*$" | ( while read -r line;
             do
-                while true
-                do
-                    if [[ $Ijob -gt $Nproc ]]; then
-                        Ijob=0
-                    fi
-                    if [[ ! "${PID[Ijob]}" ]] || ! kill -0 ${PID[Ijob]} 2> /dev/null; then
-                    {
-                        line_arr=($line)
-                        get_revision ${line_arr[0]} ${line_arr[1]}
-                        dir=${line_arr[2]}
-                        sh svn_stats.sh -f $FROM $TO $dir | tee -a $OUT
-                    } &
-                        PID[Ijob]=$!
-                        Ijob=$((Ijob+1))
-                        break;
-                    fi
-                done
+                read -u1000
+                {
+                    line_arr=($line)
+                    get_revision ${line_arr[0]} ${line_arr[1]}
+                    dir=${line_arr[2]}
+                    sh svn_stats.sh -f $FROM $TO $dir | tee -a $OUT
+                    echo >&1000
+                } &
             done
             wait
             )
