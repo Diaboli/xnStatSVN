@@ -1,22 +1,21 @@
 #!/bin/bash
 #svn version 1.9
 
-LOG_FILE="xnStatSVN.log"
-
 # 帮助信息
 get_help() 
 {
     echo 
     echo "------------ svn_stats.sh ---------------"
-    echo "Usage: sh xnStatSVN [option] user-config"
+    echo "Usage: sh xnStatSVN.sh [option] user-config"
     echo 
     echo "Option:"
     echo "  -a      获取项目代码数, 版本间有效代码修改统计, 其中修改代码数为有效添加代码和有效删减代码之和."
     echo "  -t      获取项目代码数, 版本间有效代码修改统计, 其中修改代码为删减代码后立即增加的代码，此数目不计入有效添加代码和有效删减代码."
-#    echo "  -u      获取SVN提交用户, 版本间有效代码修改统计, 其中修改代码为删减代码后立即增加的代码，此数目不计入有效添加代码和有效删减代码."
-#    echo "  -f      获取各种文件类型, 版本间有效代码修改统计, 其中修改代码为删减代码后立即增加的代码，此数目不计入有效添加代码和有效删减代码."
-    echo "  注意:   新增或删减的代码非空行时, 视为有效代码!"
-    echo "          Cygwin环境下不支持 URL 在线统计!"
+    echo "  -u      获取SVN提交用户, 版本间有效代码修改统计, 其中修改代码为删减代码后立即增加的代码，此数目不计入有效添加代码和有效删减代码."
+    echo "  -f      获取各种文件类型, 版本间有效代码修改统计, 其中修改代码为删减代码后立即增加的代码，此数目不计入有效添加代码和有效删减代码."
+    echo "  注意:   1.新增或删减的代码非空行时, 视为有效代码!"
+    echo "          2.Cygwin环境下不支持 URL 在线统计!"
+    echo "          3.Cygwin环境下建议使用输出重定向, 结果在自定义的文件中查看, 比如: sh xnStatSVN.sh [option] user-config > result.log"
     echo 
     echo "------------- by lizhe ------------------"
     echo
@@ -147,7 +146,7 @@ while [ -n "$1" ]; do
 
             break;;
 
-        -usercount) shift
+        -u) shift
 
             echo " * 表示URL路径"
             echo "------------------------------------------------------------------------------------------------------------------------"
@@ -168,10 +167,11 @@ while [ -n "$1" ]; do
                         line_arr=($line)
                         get_revision ${line_arr[0]} ${line_arr[1]}
                         dir=${line_arr[2]}
-                        sh svn_stats.sh -u $FROM $TO $dir | tee -a $OUT
+                        sh svn_stats.sh -u $FROM $TO $dir $IjobNum >> $OUT
                     } &
                         PID[Ijob]=$!
                         Ijob=$((Ijob+1))
+                        IjobNum=$((IjobNum+1))
                         break;
                     fi
                 done
@@ -179,13 +179,14 @@ while [ -n "$1" ]; do
             wait 
             )
 
+            cat $OUT | sort -n -k9 | awk ' { printf " %-15s %-25s %-15s %-12s %-12s %-12s %-12s %-12s\n", $1, $2, $3, $4, $5, $6, $7, $8; } '
             echo "------------------------------------------------------------------------------------------------------------------------"
             cat $OUT | awk '{ sum_total_mod += $4; sum_mod += $5; sum_del += $6; sum_add += $7; } END{ printf " %-15s %-25s %-15s %-12s %-12s %-12s %-12s \n", "总合计", "————", "————", sum_total_mod, sum_mod, sum_del, sum_add, "————"; }'
             echo
 
             break;;
 
-        -filetype) shift
+        -f) shift
 
             echo " * 表示URL路径"
             echo "------------------------------------------------------------------------------------------------------------------------"
@@ -206,10 +207,11 @@ while [ -n "$1" ]; do
                         line_arr=($line)
                         get_revision ${line_arr[0]} ${line_arr[1]}
                         dir=${line_arr[2]}
-                        sh svn_stats.sh -f $FROM $TO $dir | tee -a $OUT
+                        sh svn_stats.sh -f $FROM $TO $dir $IjobNum >> $OUT
                     } &
                         PID[Ijob]=$!
                         Ijob=$((Ijob+1))
+                        IjobNum=$((IjobNum+1))
                         break;
                     fi
                 done
@@ -217,6 +219,7 @@ while [ -n "$1" ]; do
             wait
             )
 
+            cat $OUT | sort -n -k9 | awk ' { printf " %-15s %-25s %-15s %-12s %-12s %-12s %-12s %-12s\n", $1, $2, $3, $4, $5, $6, $7, $8; } '
             echo "------------------------------------------------------------------------------------------------------------------------"
             cat $OUT | awk '{ sum_total_mod += $4; sum_mod += $5; sum_del += $6; sum_add += $7; } END{ printf " %-15s %-25s %-15s %-12s %-12s %-12s %-12s %-12s\n", "总合计", "————", "————", sum_total_mod, sum_mod, sum_del, sum_add, "————"; }'
             echo

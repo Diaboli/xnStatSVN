@@ -115,9 +115,10 @@ get_type_counts()
 get_user_counts() 
 {
     local SVN_DIR=$1
+    local JOB_NUMBER=$2
     local RAND_NUM=`cat /dev/urandom | head -1 | md5sum | head -c 8`
 
-    $SVN_LOGS -l $LOG_LIMIT -q -r $DIFF_REV $SVN_DIR | awk -v svn_dir=$SVN_DIR -v svn_date=$DIFF_REV -v project=$PROJECT -v rand_num=$RAND_NUM -v branch_version=$BRANCH_VERSION '
+    $SVN_LOGS -l $LOG_LIMIT -q -r $DIFF_REV $SVN_DIR | awk -v svn_dir=$SVN_DIR -v svn_date=$DIFF_REV -v project=$PROJECT -v rand_num=$RAND_NUM -v branch_version=$BRANCH_VERSION -v job_number=$JOB_NUMBER '
     BEGIN {
         cmd_mkdir = sprintf("mkdir ./.%s.tmpdiff", rand_num);
         system(cmd_mkdir);
@@ -137,7 +138,7 @@ get_user_counts()
     }
     END {
         if(NR == 1)
-            printf " %-18s %-25s %-15s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, "————", "————", "————", "————", "————", "————";
+            printf " %-18s %-25s %-15s %-12s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, "————", "————", "————", "————", "————", "————", job_number;
             
         for(key in tmpdiff) {
         
@@ -172,7 +173,7 @@ get_user_counts()
             valid_del = 0 + valid_del;
             valid_add = 0 + valid_add;
 
-            printf " %-18s %-25s %-15s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, key, valid_mod+valid_add+valid_del, valid_mod, valid_del, valid_add, branch_version;
+            printf " %-18s %-25s %-15s %-12s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, key, valid_mod+valid_add+valid_del, valid_mod, valid_del, valid_add, branch_version, job_number;
         }
         
         cmd_rm = sprintf("rm -r ./.%s.tmpdiff", rand_num);
@@ -184,7 +185,8 @@ get_user_counts()
 get_file_counts()
 {
     local SVN_DIR=$1
-    $SVN_DIFF $DIFF_REV $SVN_DIR | awk -v svn_dir=$SVN_DIR -v svn_date=$DIFF_REV -v project=$PROJECT -v branch_version=$BRANCH_VERSION '
+    local JOB_NUMBER=$2
+    $SVN_DIFF $DIFF_REV $SVN_DIR | awk -v svn_dir=$SVN_DIR -v svn_date=$DIFF_REV -v project=$PROJECT -v branch_version=$BRANCH_VERSION -v job_number=$JOB_NUMBER '
     {
         # 获取文件类型
         if($0~/^Index/) {
@@ -222,14 +224,14 @@ get_file_counts()
     }
     END {
         if(NR == 0)
-            printf " %-18s %-25s %-15s %-12s %-12s %-12s %-12s %-12s \n", project, svn_date, "————", "————", "————", "————", "————", "————";
+            printf " %-18s %-25s %-15s %-12s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, "————", "————", "————", "————", "————", "————", job_number;
 
         for(key in fcounts) {
             split(key, subkey, SUBSEP);
             valid_add = 0 + fcounts[subkey[1], "add"];
             valid_mod = 0 + fcounts[subkey[1], "mod"];
             valid_del = 0 + fcounts[subkey[1], "del"];
-            printf "%-18s %-25s %-15s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, subkey[1], valid_add+valid_mod+valid_del, valid_mod, valid_del, valid_add, branch_version;
+            printf "%-18s %-25s %-15s %-12s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, subkey[1], valid_add+valid_mod+valid_del, valid_mod, valid_del, valid_add, branch_version, job_number;
         }
     }' 
 }
@@ -358,25 +360,34 @@ while [ -n "$1" ]; do
             get_revision $1 $2;
 
             shift 2;
-            for x in "$@"; do
-                SVN_DIR=$x
-                get_project_info $SVN_DIR
-#               svn update $SVN_DIR > /dev/null
-                get_user_counts $SVN_DIR
-            done
+            SVN_DIR=$1
+            get_project_info $SVN_DIR
+
+            shift;
+            if [ ! $1 ]; then
+                JOB_NUMBER=0
+            else 
+                JOB_NUMBER=$1
+            fi
+            get_user_counts $SVN_DIR $JOB_NUMBER
     
             break;;
 
         -f) shift
             get_revision $1 $2;
-            shift 2;
 
-            for x in "$@"; do
-                SVN_DIR=$x
-                get_project_info $SVN_DIR
-#               svn update $SVN_DIR > /dev/null
-                get_file_counts $SVN_DIR
-            done
+            shift 2;
+            SVN_DIR=$1
+            get_project_info $SVN_DIR
+
+            shift;
+            if [ ! $1 ]; then
+                JOB_NUMBER=0
+            else 
+                JOB_NUMBER=$1
+            fi
+            get_file_counts $SVN_DIR $JOB_NUMBER
+
 
             break;;
 
