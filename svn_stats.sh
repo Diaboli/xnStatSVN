@@ -138,7 +138,7 @@ get_user_counts()
     }
     END {
         if(NR == 1)
-            printf " %-18s %-25s %-15s %-12s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, "————", "————", "————", "————", "————", "————", job_number;
+            printf " %-18s %-25s %-15s %-12s %-12s %-12s %-12s %-12s %-s\n", project, svn_date, "————", "————", "————", "————", "————", "————", job_number;
             
         for(key in tmpdiff) {
         
@@ -172,8 +172,7 @@ get_user_counts()
             valid_mod = 0 + valid_mod;
             valid_del = 0 + valid_del;
             valid_add = 0 + valid_add;
-
-            printf " %-18s %-25s %-15s %-12s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, key, valid_mod+valid_add+valid_del, valid_mod, valid_del, valid_add, branch_version, job_number;
+            printf " %-18s %-25s %-15s %-12s %-12s %-12s %-12s %-12s %-s\n", project, svn_date, key, valid_mod+valid_add+valid_del, valid_mod, valid_del, valid_add, branch_version, job_number;
         }
         
         cmd_rm = sprintf("rm -r ./.%s.tmpdiff", rand_num);
@@ -186,6 +185,7 @@ get_file_counts()
 {
     local SVN_DIR=$1
     local JOB_NUMBER=$2
+
     $SVN_DIFF $DIFF_REV $SVN_DIR | awk -v svn_dir=$SVN_DIR -v svn_date=$DIFF_REV -v project=$PROJECT -v branch_version=$BRANCH_VERSION -v job_number=$JOB_NUMBER '
     {
         # 获取文件类型
@@ -201,17 +201,19 @@ get_file_counts()
             else {
                 ftype="other";
             }
+            ftypeArray[ftype]=1;
         }
         else {
             if($0~/^+[^+]+/) {
-                if($0~/^+[ \t\r\n]+$/) {}
-                    else {
-                        if(NR == (del_nr + 1)) {
-                            fcounts[ftype, "mod"]++;
-                            fcounts[ftype, "del"]--;        
-                        }
-                        else fcounts[ftype, "add"]++;
+                if($0~/^+[ \t\r\n]+$/) {
+                }
+                else {
+                    if(NR == (del_nr + 1)) {
+                        fcounts[ftype, "mod"]++;
+                        fcounts[ftype, "del"]--;        
                     }
+                    else fcounts[ftype, "add"]++;
+                }
             }
             else if($0~/^-[^-]+/) {
                 if($0~/^-[ \t\r\n]+$/) {}
@@ -224,14 +226,13 @@ get_file_counts()
     }
     END {
         if(NR == 0)
-            printf " %-18s %-25s %-15s %-12s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, "————", "————", "————", "————", "————", "————", job_number;
+            printf " %-18s %-25s %-15s %-12s %-12s %-12s %-12s %-12s %-s\n", project, svn_date, "————", "————", "————", "————", "————", "————", job_number;
 
-        for(key in fcounts) {
-            split(key, subkey, SUBSEP);
-            valid_add = 0 + fcounts[subkey[1], "add"];
-            valid_mod = 0 + fcounts[subkey[1], "mod"];
-            valid_del = 0 + fcounts[subkey[1], "del"];
-            printf "%-18s %-25s %-15s %-12s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, subkey[1], valid_add+valid_mod+valid_del, valid_mod, valid_del, valid_add, branch_version, job_number;
+        for(key in ftypeArray) {
+            valid_add = 0 + fcounts[key, "add"];
+            valid_mod = 0 + fcounts[key, "mod"];
+            valid_del = 0 + fcounts[key, "del"];
+            printf " %-18s %-25s %-15s %-12s %-12s %-12s %-12s %-12s %-s\n", project, svn_date, key, valid_add+valid_mod+valid_del, valid_mod, valid_del, valid_add, branch_version, job_number;
         }
     }' 
 }
@@ -329,11 +330,11 @@ while [ -n "$1" ]; do
 
             shift;
             if [ ! $1 ]; then
-                echo $TOTAL_MOD $TOTAL_DEL $TOTAL_ADD | awk '{ printf " %-18s %-25s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, svn_code, $1, $2, $3, branch_version; }' project=$PROJECT svn_date="${FROM}:${TO}" svn_code=$((TOTAL_CODE_NUM)) branch_version=$BRANCH_VERSION
+                JOB_NUMBER=0
             else
                 JOB_NUMBER=$1; 
-                echo $TOTAL_MOD $TOTAL_DEL $TOTAL_ADD | awk '{ printf " %-18s %-25s %-12s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, svn_code, $1, $2, $3, branch_version, job_number; }' project=$PROJECT svn_date="${FROM}:${TO}" svn_code=$((TOTAL_CODE_NUM)) branch_version=$BRANCH_VERSION job_number=$JOB_NUMBER
             fi
+            echo $TOTAL_MOD $TOTAL_DEL $TOTAL_ADD | awk '{ printf " %-18s %-25s %-12s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, svn_code, $1, $2, $3, branch_version, job_number; }' project=$PROJECT svn_date="${FROM}:${TO}" svn_code=$((TOTAL_CODE_NUM)) branch_version=$BRANCH_VERSION job_number=$JOB_NUMBER
 
             break;;
 
@@ -348,11 +349,11 @@ while [ -n "$1" ]; do
             
             shift;
             if [ ! $1 ]; then
-                echo $TOTAL_MOD $TOTAL_DEL $TOTAL_ADD | awk '{ printf " %-18s %-25s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, svn_code, $1, $2, $3, branch_version; }' project=$PROJECT svn_date="${FROM}:${TO}" svn_code=$((TOTAL_CODE_NUM)) branch_version=$BRANCH_VERSION
+                JOB_NUMBER=0
             else
                 JOB_NUMBER=$1
-                echo $TOTAL_MOD $TOTAL_DEL $TOTAL_ADD | awk '{ printf " %-18s %-25s %-12s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, svn_code, $1, $2, $3, branch_version, job_number; }' project=$PROJECT svn_date="${FROM}:${TO}" svn_code=$((TOTAL_CODE_NUM)) branch_version=$BRANCH_VERSION job_number=$JOB_NUMBER
             fi
+            echo $TOTAL_MOD $TOTAL_DEL $TOTAL_ADD | awk '{ printf " %-18s %-25s %-12s %-12s %-12s %-12s %-12s %-s\n", project, svn_date, svn_code, $1, $2, $3, branch_version, job_number; }' project=$PROJECT svn_date="${FROM}:${TO}" svn_code=$((TOTAL_CODE_NUM)) branch_version=$BRANCH_VERSION job_number=$JOB_NUMBER
 
             break;;
 
@@ -387,7 +388,6 @@ while [ -n "$1" ]; do
                 JOB_NUMBER=$1
             fi
             get_file_counts $SVN_DIR $JOB_NUMBER
-
 
             break;;
 
