@@ -192,7 +192,6 @@ while [ -n "$1" ]; do
             echo "----------------------------------------------------------------------------------"
             echo "                        SVN 代码统计 - 开发人员提交量分析" 
             echo "----------------------------------------------------------------------------------"
-#            awk 'BEGIN{ printf " %-s\t%-s\t%-s\t%-s\t%-s\t%-s\n", "user", "date", "commits", "edit", "del", "add"; }'
             awk 'BEGIN{ printf " %-15s%-30s%-10s%-10s%-10s%-10s\n", "user", "date", "commits", "edit", "del", "add"; }'
             echo "----------------------------------------------------------------------------------"
 
@@ -226,15 +225,18 @@ while [ -n "$1" ]; do
                 array_del[$3] += $6;
                 array_add[$3] += $7;
                 array_date[$3] = $2;
+
+                sum_total_mod += $4;
+                sum_mod += $5;
+                sum_del += $6;
+                sum_add += $7;
             } END {
                 for (i in array_total) {
-#                    printf " %-s\t%-s\t%-s\t%-s\t%-s\t%-s\n", i, array_date[i], array_total[i], array_mod[i], array_del[i], array_add[i];
                     printf " %-15s%-30s%-10s%-10s%-10s%-10s\n", i, array_date[i], array_total[i], array_mod[i], array_del[i], array_add[i];
                 }
+                print "----------------------------------------------------------------------------------"
+                printf " %-15s%-30s%-10s%-10s%-10s%-10s\n", "sum", "--", sum_total_mod, sum_mod, sum_del, sum_add;
             }'
-            echo "----------------------------------------------------------------------------------"
-#            cat $OUT | awk '{ sum_total_mod += $4; sum_mod += $5; sum_del += $6; sum_add += $7; } END {printf " %-s\t%-s\t%-s\t%-s\t%-s\t%-s\n", "sum", "--", sum_total_mod, sum_mod, sum_del, sum_add; }'
-            cat $OUT | awk '{ sum_total_mod += $4; sum_mod += $5; sum_del += $6; sum_add += $7; } END {printf " %-15s%-30s%-10s%-10s%-10s%-10s\n", "sum", "--", sum_total_mod, sum_mod, sum_del, sum_add; }'
             break;;
 
         -f|--file) shift
@@ -275,6 +277,65 @@ while [ -n "$1" ]; do
             cat $OUT | awk '{ sum_total_mod += $4; sum_mod += $5; sum_del += $6; sum_add += $7; } END{ printf " %-15s %-25s %-15s %-12s %-12s %-12s %-12s %-12s\n", "总合计", "————", "————", sum_total_mod, sum_mod, sum_del, sum_add, "————"; }'
             echo
 
+            break;;
+    
+        -fc|--filecount) shift
+
+            echo " * 表示URL路径"
+            echo "------------------------------------------------------------------------------------------"
+            echo "                                SVN 代码统计 - 文件类型分析" 
+            echo "------------------------------------------------------------------------------------------"
+            awk 'BEGIN{ printf " %-15s%-30s%-10s%-10s%-10s%-10s%-10s\n", "file", "date", "clc", "commits", "edit", "del", "add"; }'
+            echo "------------------------------------------------------------------------------------------"
+
+            cat $1 | grep -v "^[ ]*#" | grep -v "^[ ]*$" | ( while read -r line;
+            do
+                while true
+                do
+                    if [[ $Ijob -gt $Nproc ]]; then
+                        Ijob=0
+                    fi
+                    if [[ ! "${PID[Ijob]}" ]] || ! kill -0 ${PID[Ijob]} 2> /dev/null; then
+                    {
+                        line_arr=($line)
+                        get_revision ${line_arr[0]} ${line_arr[1]}
+                        dir=${line_arr[2]} 
+                        sh svn_stats.sh -fc $FROM $TO $dir $IjobNum >> $OUT
+                    } &
+                        PID[Ijob]=$!
+                        Ijob=$((Ijob+1))
+                        IjobNum=$((IjobNum+1))
+                        break;
+                    fi
+                done
+            done
+            wait
+            )
+
+            cat $OUT | awk '{ 
+                if ($3) {
+                    array_date[$3] = $2;
+                    array_total[$3] += $4;
+                    array_mod[$3] += $5;
+                    array_del[$3] += $6;
+                    array_add[$3] += $7;
+
+                    sum_total_mod +=$4;
+                    sum_mod += $5;
+                    sum_del += $6;
+                    sum_add += $7;
+                } else {
+                    array_clc[$1] += $2;
+
+                    sum_clc += $2;
+                }
+            } END {
+                for (i in array_clc) {
+                    printf " %-15s%-30s%-10s%-10s%-10s%-10s%-10s\n", i, array_date[i], array_clc[i], array_total[i], array_mod[i], array_del[i], array_add[i];
+                }
+                print "------------------------------------------------------------------------------------------"
+                printf " %-15s%-30s%-10s%-10s%-10s%-10s%-10s\n", "sum", "--", sum_clc, sum_total_mod, sum_mod, sum_del, sum_add;
+            }'
             break;;
 
         -h|*)   shift

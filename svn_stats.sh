@@ -137,8 +137,7 @@ get_user_counts()
         }
     }
     END {
-        if(NR == 1)
-            printf " %-18s %-25s %-15s %-12s %-12s %-12s %-12s %-12s %-s\n", project, svn_date, "————", "————", "————", "————", "————", "————", job_number;
+        if(NR == 1) {}
             
         for(key in tmpdiff) {
         
@@ -225,8 +224,7 @@ get_file_counts()
         }
     }
     END {
-        if(NR == 0)
-            printf " %-18s %-25s %-15s %-12s %-12s %-12s %-12s %-12s %-s\n", project, svn_date, "————", "————", "————", "————", "————", "————", job_number;
+        if (NR == 0) {}
 
         for(key in ftypeArray) {
             valid_add = 0 + fcounts[key, "add"];
@@ -258,6 +256,76 @@ get_project_info() {
     BRANCH_VERSION=${temp#*/}
 }
 
+getFileTypeCodeNumber() {
+    declare -i files=0
+    ftypeTemp=$(mktemp)
+
+    if [ "$1" = "" ]; then
+        arg="."
+    else
+        arg=$1
+    fi
+
+    if [[ "${1}" =~ "http" ]]; then
+        listAllDirFileTypeOnline $arg
+    else
+        listAllDirFileType $arg
+    fi
+
+    cat $ftypeTemp | awk ' {
+        ftypeNumArray[$1]+=$2;
+    } END {
+        for(key in ftypeNumArray){
+            printf "%-s\t%-s\n", key, ftypeNumArray[key];
+        }
+    } '
+    rm -f $ftypeTemp
+}
+
+listAllDirFileTypeOnline() {
+    local list_command=`${SVN_LIST} ${TO} ${1}`
+    cat_command="${SVN_CAT} ${TO} "
+    for file in $list_command
+    do
+        if [ x"$file" != x"." -a x"$file" != x".." ]; then
+            file=${file%^M*}
+            if [[ $file =~ "/" ]]; then
+                listAllDirFileTypeOnline "$1/$file"
+            else
+                last_index=${file##*.}
+                if [ ${#last_index} -gt 1 ]; then
+                    ftype=$last_index;
+                else
+                    ftype="other";
+                fi
+                printf "%s\t" $ftype >> $ftypeTemp
+                count_command="${cat_command}${1}/${file}"
+                $(eval $count_command | grep -v "^$" | grep -v "^[ \t\r\n]*^M$" | wc -l >> $ftypeTemp)
+            fi
+        fi
+    done
+}
+
+listAllDirFileType() {
+    for file in `ls -a $1`
+    do
+        if [ x"$file" != x"." -a x"$file" != x".." ]; then
+            if [ -d "$1/$file" ]; then
+                listAllDirFileType "$1/$file"
+            else
+                last_index=${file##*.}
+                if [ ${#last_index} -gt 1 ]; then
+                    ftype=$last_index;
+                else
+                    ftype="other";
+                fi
+                printf "%s\t" $ftype >> $ftypeTemp
+                cat "$1/$file" | grep -v "^$" | grep -v "^[ \t\r\n]*^M$" | wc -l >> $ftypeTemp
+                files=$files+1
+            fi
+        fi
+    done
+}
 # 获取项目代码总数
 get_code_number() {
     declare -i files=0
@@ -286,6 +354,7 @@ list_alldir_online()
     for file in $list_command
     do
         if [ x"$file" != x"." -a x"$file" != x".." ];then
+            file=${file%*}
             if [[ $file =~ "/" ]]; then
                 list_alldir_online "$1/$file"
             else
@@ -334,7 +403,7 @@ while [ -n "$1" ]; do
             else
                 JOB_NUMBER=$1; 
             fi
-            echo $TOTAL_MOD $TOTAL_DEL $TOTAL_ADD | awk '{ printf " %-18s %-25s %-12s %-12s %-12s %-12s %-12s %-12s\n", project, svn_date, svn_code, $1, $2, $3, branch_version, job_number; }' project=$PROJECT svn_date="${FROM}:${TO}" svn_code=$((TOTAL_CODE_NUM)) branch_version=$BRANCH_VERSION job_number=$JOB_NUMBER
+            echo $TOTAL_MOD $TOTAL_DEL $TOTAL_ADD | awk '{ printf " %-18s %-25s %-12s %-12s %-12s %-12s %-12s %-s\n", project, svn_date, svn_code, $1, $2, $3, branch_version, job_number; }' project=$PROJECT svn_date="${FROM}:${TO}" svn_code=$((TOTAL_CODE_NUM)) branch_version=$BRANCH_VERSION job_number=$JOB_NUMBER
 
             break;;
 
@@ -387,6 +456,24 @@ while [ -n "$1" ]; do
             else 
                 JOB_NUMBER=$1
             fi
+            get_file_counts $SVN_DIR $JOB_NUMBER
+
+            break;;
+
+        -fc) shift
+            get_revision $1 $2;
+
+            shift 2;
+            SVN_DIR=$1
+            get_project_info $SVN_DIR
+
+            shift;
+            if [ ! $1 ]; then
+                JOB_NUMBER=0
+            else
+                JOB_NUMBER=$1
+            fi
+            getFileTypeCodeNumber $SVN_DIR
             get_file_counts $SVN_DIR $JOB_NUMBER
 
             break;;
