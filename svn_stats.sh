@@ -9,6 +9,9 @@ SVN_LIST="svn list -r"
 SVN_CAT="svn cat -r"
 SVN_INFO="svn info"
 
+# 需要统计的文件类型配置
+FILE_TYPE_CONFIG_PATH="./file-type-config"
+
 get_help() 
 {
     echo 
@@ -358,14 +361,18 @@ list_alldir_online()
             if [[ $file =~ "/" ]]; then
                 list_alldir_online "$1/$file"
             else
-                if [[ $file =~ \.java$ || $file =~ \.xml$ || $file =~ \.js$ || $file =~ \.css$ ]]; then
-                    files=$files+1
-                    count_command="${cat_command}${1}/${file}"
-                    lines=$lines+$(eval $count_command | grep -v "^$" | grep -v "^[ \t\r\n]*$" | wc -l)
-                fi
+                while IFS= read -r var
+                do
+                    if [[ $file =~ $var ]]; then
+                    	files=$files+1
+                    	count_command="${cat_command}${1}/${file}"
+                    	lines=$lines+$(eval $count_command | grep -v "^$" | grep -v "^[ \t\r\n]*$" | wc -l)
+                    break;
+                    fi
+                done < $FILE_TYPE_CONFIG_PATH
             fi
         fi
-    done
+    done;
 }
 
 # 遍历本地目录文件, 统计其代码数
@@ -377,10 +384,14 @@ list_alldir()
             if [ -d "$1/$file" ]; then
                 list_alldir "$1/$file"
             else
-                if [[ $file =~ \.java$ || $file =~ \.xml$ || $file =~ \.js$ || $file =~ \.css$ ]]; then
-                    files=$files+1
-                    lines=$lines+`cat "$1/$file" | grep -v "^$" | grep -v "^[ \t\r\n]*$" | wc -l`
-                fi
+                while IFS= read -r var
+		do
+                	if [[ $file =~ $var ]]; then
+                    		files=$files+1
+                    		lines=$lines+`cat "$1/$file" | grep -v "^$" | grep -v "^[ \t\r\n]*$" | wc -l`
+                    		break;
+                	fi
+		done < $FILE_TYPE_CONFIG_PATH
             fi
         fi
     done
