@@ -18,8 +18,11 @@
 # example 2:
 # 92158 HEAD http://www.abc.com/svn/codes/activity/
 # BASE HEAD /home/user/svn/codes/weixin/
-
-#93512 92937 /home/lizhe/svn/codes/activity/trunk/xnol-activity-app/
-#BASE    2017-07-03  /home/lizhe/svn/codes/activity/trunk/xnol-activity-interface/
-#2017-06-10  2017-07-10  http://tech.xiaoniu88.net/svn/codes/activity/trunk/xnol-activity-app/
-93512  92937  http://tech.xiaoniu88.net/svn/codes/activity/trunk/xnol-activity-app/
+#
+# example 3 - cygwin environment:
+# 2017-07-19 2017-08-03 /cygdrive/d/svn/codes/activity/
+#
+# example 4 - linux 虚拟机共享 windows 文件夹:
+# 2017-07-19 2017-08-03 /mnt/hgfs/cygwin-svn/codes/activity/trunk/
+#
+93512  92937 /home/user/svn/codes/app/ 
